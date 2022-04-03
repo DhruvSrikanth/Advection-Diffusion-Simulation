@@ -20,8 +20,9 @@ def plot_data(filename):
     '''
     data = read_file(filename)
     plt.imshow(data, interpolation='none')
-    plt.xlabel('x')
-    plt.ylabel('y')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.colorbar(orientation='vertical')
     plt.title('Advection Simulation Plot')
     plt.savefig('.' + filename.split('.')[1] + '.png')
 
