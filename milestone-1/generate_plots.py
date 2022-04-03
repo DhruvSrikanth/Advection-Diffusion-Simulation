@@ -25,6 +25,7 @@ def plot_data(filename):
     plt.colorbar(orientation='vertical')
     plt.title('Advection Simulation Plot')
     plt.savefig('.' + filename.split('.')[1] + '.png')
+    plt.clf()
 
 
 # Visualize and save data for different timestamps in the simulation
