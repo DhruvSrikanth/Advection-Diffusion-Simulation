@@ -3,13 +3,12 @@ using namespace std;
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
-#include <vector>
 #include <string>
 #include <fstream>
 #include <chrono>
 using namespace std::chrono;
 
-void write_to_file(vector<vector<double> > const& C_n, int const& N, string const& filename) {
+void write_to_file(double** const& C_n, int const& N, string const& filename) {
     ofstream out(filename);
     for (int i = 0; i < N; i ++) {
         for (int j = 0; j < N; j ++) {
@@ -23,7 +22,19 @@ void write_to_file(vector<vector<double> > const& C_n, int const& N, string cons
     out.close();
 }
 
-void initial_gaussian(vector<vector<double> >& C_n, int const& N, double const& L) {
+double** create_matrix(int const& N){
+    double** mat = new double*[N];
+
+    for (int i = 0; i < N; i++) {
+        mat[i] = new double[N];
+        for (int j = 0; j < N; j++) {
+            mat[i][j] = 0.0;
+        }
+    }
+    return mat;
+}
+
+void initial_gaussian(double**& C_n, int const& N, double const& L) {
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             C_n[i][j] = exp(-(pow((i-N/2)*L/N, 2) + pow((j-N/2)*L/N, 2))/(L*L/8));
@@ -31,7 +42,7 @@ void initial_gaussian(vector<vector<double> >& C_n, int const& N, double const& 
     }
 }
 
-void apply_boundary_conditions(int const& N, double const& dt, double const& dx, double const& u, double const& v, vector<vector<double> > const& C_n, vector<vector<double> >& C_n_1) {
+void apply_boundary_conditions(int const& N, double const& dt, double const& dx, double const& u, double const& v, double** const& C_n, double**& C_n_1) {
     for (int i = 0; i < N; i ++) {
         for (int j = 0; j < N; j ++) {
             double C_n_up;
@@ -89,11 +100,11 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
     }
 }
 
-vector<vector<double> > advection_simulation(int N, int NT, double L, double T, double u, double v) {
+void advection_simulation(int N, int NT, double L, double T, double u, double v) {
     
     // Initialize variables
-    vector<vector<double> > C_n(N, vector<double>(N, 0.0));
-    vector<vector<double> > C_n_1(N, vector<double>(N, 0.0));
+    double** C_n = create_matrix(N);
+    double** C_n_1 = create_matrix(N);
 
     double dx = L/N;
     double dt = T/NT;
@@ -134,7 +145,10 @@ vector<vector<double> > advection_simulation(int N, int NT, double L, double T, 
         }
     }
 
-    return C_n;
+    // Write output to file
+    cout << "Writing output to file..." << endl;
+    write_to_file(C_n, N, "./milestone-1/simulation_user_specified_timestep.txt");
+    cout << "Output written to file!" << "\n" << endl; 
 }
 
 int main(int argc, char** argv) {
@@ -159,13 +173,8 @@ int main(int argc, char** argv) {
 
     // Perform simulation
     cout << "Simulating..." << endl;
-    vector<vector<double> > C_n = advection_simulation(N, NT, L, T, u, v);
+    advection_simulation(N, NT, L, T, u, v);
     cout << "Simulation Complete!" << endl;
-
-    // Write output to file
-    cout << "Writing output to file..." << endl;
-    write_to_file(C_n, N, "./milestone-1/simulation_user_specified_timestep.txt");
-    cout << "Output written to file!" << "\n" << endl; 
 
     return 0;
 
