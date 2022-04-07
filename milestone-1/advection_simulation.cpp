@@ -131,7 +131,7 @@ void advection_simulation(int N, int NT, double L, double T, double u, double v)
         swap(C_n, C_n_1);
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
-        cout << "Iteration: " << n << " - Time Taken: " << duration.count() << " microseconds" << endl;
+        cout << "Iteration: " << n << " - Grind Rate: " << 1e6/duration.count() << " iter/sec" << endl;
 
         if (n == 10000-1) {
             cout << "Writing output to file..." << endl;
