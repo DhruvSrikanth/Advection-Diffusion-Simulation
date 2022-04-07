@@ -10,22 +10,22 @@ def read_file(filename):
         for row in f:
             row_data = []
             for element in row.split(" "):
-                row_data.append(float(element))
+                row_data.append(np.float64(element))
             data.append(row_data)
-    return np.asarray(data)
+    return np.array(data)
 
 def plot_data(filename):
     '''
     Plot and save the data.
     '''
     data = read_file(filename)
-    plt.imshow(data, interpolation='none')
+    plt.imshow(data)
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.colorbar(orientation='vertical')
     plt.title('Advection Simulation Plot')
     plt.savefig('.' + filename.split('.')[1] + '.png')
-    plt.clf()
+    plt.close()
 
 
 # Visualize and save data for different timestamps in the simulation

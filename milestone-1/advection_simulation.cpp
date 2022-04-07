@@ -6,93 +6,10 @@ using namespace std;
 #include <vector>
 #include <string>
 #include <fstream>
+#include <chrono>
+using namespace std::chrono;
 
-vector<vector<double> > advection_simulation(int N, int NT, double L, double T, double u, double v) {
-    
-    // Initialize variables
-    vector<vector<double> > C_n(N, vector<double>(N, 0.0));
-    vector<vector<double> > C_n_1(N, vector<double>(N, 0.0));
-
-    double dx = L/N;
-    double dt = T/NT;
-    
-    // Check Courant stability condition
-    assert(dt<=dx/sqrt(2*(u*u + v*v)));
-
-    // Initialize gaussian grid
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            C_n[i][j] = exp(-((i-L/2)*(i-L/2) + (j-L/2)*(j-L/2))/(2*L/16));
-        }
-    }
-
-
-    // Compute next time step
-    for (int n = 0; n < NT; n ++) {
-        for (int i = 0; i < N; i ++) {
-            for (int j = 0; j < N; j ++) {
-                double C_n_up;
-                double C_n_down;
-                double C_n_left;
-                double C_n_right;
-                // Apply periodic boundary conditions
-                if (i == 0) {
-                    C_n_up = C_n[N-1][j];
-                    C_n_down = C_n[i+1][j];
-                    if (j == 0) {
-                        C_n_left = C_n[i][N-1];
-                        C_n_right = C_n[i][j+1];
-                    } else if (j == N-1) {
-                        C_n_left = C_n[i][j-1];
-                        C_n_right = C_n[i][0];
-                    } else {
-                        C_n_left = C_n[i][j-1];
-                        C_n_right = C_n[i][j+1];
-                    }
-                } 
-                else if (i == N-1) {
-                    C_n_up = C_n[i-1][j];
-                    C_n_down = C_n[0][j];
-                    if (j == 0) {
-                        C_n_left = C_n[i][N-1];
-                        C_n_right = C_n[i][j+1];
-                    } else if (j == N-1) {
-                        C_n_left = C_n[i][j-1];
-                        C_n_right = C_n[i][0];
-                    } else {
-                        C_n_left = C_n[i][j-1];
-                        C_n_right = C_n[i][j+1];
-                    }
-                }
-                else {
-                    C_n_up = C_n[i-1][j];
-                    C_n_down = C_n[i+1][j];
-                    if (j == 0) {
-                        C_n_left = C_n[i][N-1];
-                        C_n_right = C_n[i][j+1];
-                    } else if (j == N-1) {
-                        C_n_left = C_n[i][j-1];
-                        C_n_right = C_n[i][0];
-                    } else {
-                        C_n_left = C_n[i][j-1];
-                        C_n_right = C_n[i][j+1];
-                    } 
-                }
-                // Compute next time step
-                C_n_1[i][j] = 0.25*(C_n_up + C_n_down + C_n_left + C_n_right) - (dt/(2*dx))*(u*(C_n_down - C_n_up) + v*(C_n_right - C_n_left));
-            }
-        }
-        // Update C_n
-        for (int i = 0; i < N; i ++) {
-            for (int j = 0; j < N; j ++) {
-                C_n[i][j] = C_n_1[i][j];
-            }
-        }
-    }
-    return C_n;
-}
-
-void write_to_file(vector<vector<double> > C_n, int N, string filename) {
+void write_to_file(vector<vector<double> > const& C_n, int const& N, string const& filename) {
     ofstream out(filename);
     for (int i = 0; i < N; i ++) {
         for (int j = 0; j < N; j ++) {
@@ -104,6 +21,120 @@ void write_to_file(vector<vector<double> > C_n, int N, string filename) {
         }
     }
     out.close();
+}
+
+void initial_gaussian(vector<vector<double> >& C_n, int const& N, double const& L) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            C_n[i][j] = exp(-(pow((i-N/2)*L/N, 2) + pow((j-N/2)*L/N, 2))/(L*L/8));
+        }
+    }
+}
+
+void apply_boundary_conditions(int const& N, double const& dt, double const& dx, double const& u, double const& v, vector<vector<double> > const& C_n, vector<vector<double> >& C_n_1) {
+    for (int i = 0; i < N; i ++) {
+        for (int j = 0; j < N; j ++) {
+            double C_n_up;
+            double C_n_down;
+            double C_n_left;
+            double C_n_right;
+
+            // Apply periodic boundary conditions
+            if (i == 0) {
+                C_n_up = C_n[N-1][j];
+                C_n_down = C_n[i+1][j];
+                if (j == 0) {
+                    C_n_left = C_n[i][N-1];
+                    C_n_right = C_n[i][j+1];
+                } else if (j == N-1) {
+                    C_n_left = C_n[i][j-1];
+                    C_n_right = C_n[i][0];
+                } else {
+                    C_n_left = C_n[i][j-1];
+                    C_n_right = C_n[i][j+1];
+                }
+            } 
+            else if (i == N-1) {
+                C_n_up = C_n[i-1][j];
+                C_n_down = C_n[0][j];
+                if (j == 0) {
+                    C_n_left = C_n[i][N-1];
+                    C_n_right = C_n[i][j+1];
+                } else if (j == N-1) {
+                    C_n_left = C_n[i][j-1];
+                    C_n_right = C_n[i][0];
+                } else {
+                    C_n_left = C_n[i][j-1];
+                    C_n_right = C_n[i][j+1];
+                }
+            }
+            else {
+                C_n_up = C_n[i-1][j];
+                C_n_down = C_n[i+1][j];
+                if (j == 0) {
+                    C_n_left = C_n[i][N-1];
+                    C_n_right = C_n[i][j+1];
+                } else if (j == N-1) {
+                    C_n_left = C_n[i][j-1];
+                    C_n_right = C_n[i][0];
+                } else {
+                    C_n_left = C_n[i][j-1];
+                    C_n_right = C_n[i][j+1];
+                } 
+            }
+            
+            // Compute next time step
+            C_n_1[i][j] = 0.25*(C_n_up + C_n_down + C_n_left + C_n_right) - (dt/(2*dx))*(u*(C_n_down - C_n_up) + v*(C_n_right - C_n_left));
+        }
+    }
+}
+
+vector<vector<double> > advection_simulation(int N, int NT, double L, double T, double u, double v) {
+    
+    // Initialize variables
+    vector<vector<double> > C_n(N, vector<double>(N, 0.0));
+    vector<vector<double> > C_n_1(N, vector<double>(N, 0.0));
+
+    double dx = L/N;
+    double dt = T/NT;
+
+    // Check Courant stability condition
+    assert(dt<=dx/sqrt(2*(u*u + v*v)));
+
+    // Initialize gaussian grid
+    initial_gaussian(C_n, N, L);
+    // Apply boundary conditions
+    apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1);
+    // Update C_n
+    swap(C_n, C_n_1);
+
+   // Write output to file
+    cout << "Writing initial gaussian to file..." << endl;
+    write_to_file(C_n, N, "./milestone-1/initial_gaussian.txt");
+    cout << "Initial gaussian written to file!" << "\n" << endl;
+
+    // Compute next time step
+    for (int n = 0; n < NT; n ++) {
+        auto start = high_resolution_clock::now();
+        apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1);
+        swap(C_n, C_n_1);
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<microseconds>(stop - start);
+        cout << "Iteration: " << n << " - Time Taken: " << duration.count() << " microseconds" << endl;
+
+        if (n == 10000-1) {
+            cout << "Writing output to file..." << endl;
+            write_to_file(C_n, N, "./milestone-1/simulation_10000_timesteps.txt");
+            cout << "Output written to file!" << "\n" << endl; 
+        }
+        else if (n == 15000-1) {
+            cout << "Writing output to file..." << endl;
+            write_to_file(C_n, N, "./milestone-1/simulation_15000_timesteps.txt");
+            cout << "Output written to file!" << "\n" << endl; 
+        }
+    }
+
+    return C_n;
 }
 
 int main(int argc, char** argv) {
@@ -135,43 +166,6 @@ int main(int argc, char** argv) {
     cout << "Writing output to file..." << endl;
     write_to_file(C_n, N, "./milestone-1/simulation_user_specified_timestep.txt");
     cout << "Output written to file!" << "\n" << endl; 
-
-    // Get initial gaussian
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            C_n[i][j] = exp(-((i-L/2)*(i-L/2) + (j-L/2)*(j-L/2))/(2*L/16));
-        }
-    }
-
-    // Write output to file
-    cout << "Writing initial gaussian to file..." << endl;
-    write_to_file(C_n, N, "./milestone-1/initial_gaussian.txt");
-    cout << "Initial gaussian written to file!" << "\n" << endl;
-
-    // Perform simulation
-    NT = 10000;
-    cout << "Simulating for 10000 timesteps..." << endl;
-    C_n = advection_simulation(N, NT, L, T, u, v);
-    cout << "Simulation Complete!" << endl;
-
-    // Write output to file
-    cout << "Writing output to file..." << endl;
-    write_to_file(C_n, N, "./milestone-1/simulation_10000_timesteps.txt");
-    cout << "Output written to file!" << "\n" << endl;
-
-    // Perform simulation
-    NT = 15000;
-    cout << "Simulating for 15000 timesteps..." << endl;
-    C_n = advection_simulation(N, NT, L, T, u, v);
-    cout << "Simulation Complete!" << endl;
-
-    // Write output to file
-    cout << "Writing output to file..." << endl;
-    write_to_file(C_n, N, "./milestone-1/simulation_15000_timesteps.txt");
-    cout << "Output written to file!" << "\n" << endl;
-
-
-    
 
     return 0;
 
