@@ -24,7 +24,7 @@ def generate_strong_scaling_plot(n, time, analysis_num):
 
 def generate_weak_scaling_plot(n, time):
     """
-    Generates a plot of the strong scaling results.
+    Generates a plot of the weak scaling results.
     """
     t1 = time[0]
     Sn = [t1/t for t in time]
