@@ -42,13 +42,15 @@ void initial_gaussian(double**& C_n, int const& N, double const& L) {
 }
 
 void apply_boundary_conditions(int const& N, double const& dt, double const& dx, double const& u, double const& v, double** const& C_n, double**& C_n_1) {
-    for (int i = 0; i < N; i ++) {
-        for (int j = 0; j < N; j ++) {
-            double C_n_up;
-            double C_n_down;
-            double C_n_left;
-            double C_n_right;
-
+    double C_n_up;
+    double C_n_down;
+    double C_n_left;
+    double C_n_right;
+    int i;
+    int j;
+    #pragma omp parallel for default(none) private(i, j, C_n_up, C_n_down, C_n_left, C_n_right) shared(C_n, C_n_1, N, dt, dx, u, v) schedule(guided)
+    for (i = 0; i < N; i ++) {
+        for (j = 0; j < N; j ++) {
             // Apply periodic boundary conditions
             if (i != 0 && i != N-1) {
                 C_n_up = C_n[i-1][j];
@@ -188,7 +190,7 @@ int main(int argc, char** argv) {
     cout << "Estimated memeory usage = " << N*N*sizeof(double)/1e6 << " MB" << "\n" << endl;
 
     // Set number of threads
-    num_threads = 1;
+    num_threads = 6;
     cout << "Number of threads = " << num_threads << "\n" << endl;
     omp_set_num_threads(num_threads);
 
