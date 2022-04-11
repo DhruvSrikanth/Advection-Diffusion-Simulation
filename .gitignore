@@ -1,4 +1,7 @@
+.DS_Store
+./milestone-1/.DS_Store
+./milestone-2/.DS_Store
+./visualizing/.DS_Store
 ./milestone-1/advection_simulation.dSYM
 ./milestone-1/advection_simulation
 ./milestone-2/advection_simulation
-./visualizing/advection_simulation
