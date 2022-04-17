@@ -35,8 +35,11 @@ double** create_matrix(int const& N){
 }
 
 void initial_gaussian(double**& C_n, int const& N, double const& L) {
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
+    int i;
+    int j;
+    #pragma omp parallel for default(none) private(i, j) shared(C_n, N, L) schedule(guided) 
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
             C_n[i][j] = exp(-(pow((i-N/2)*L/N, 2) + pow((j-N/2)*L/N, 2))/(L*L/8));
         }
     }

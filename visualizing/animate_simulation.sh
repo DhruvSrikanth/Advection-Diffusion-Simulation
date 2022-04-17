@@ -2,7 +2,7 @@
 
 mkdir ./visualizing/outputs
 
-g++-11 ./visualizing/advection_simulation.cpp -o ./visualizing/advection_simulation -fopenmp -O5
+g++-11 ./visualizing/advection_simulation.cpp -o ./visualizing/advection_simulation -fopenmp -O3 -mtune=native -march=native -ffast-math
 
 echo Enter the number of timesteps:
 read NT

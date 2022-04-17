@@ -173,7 +173,11 @@ int main(int argc, char** argv) {
 
     // Perform simulation
     cout << "Simulating..." << endl;
+    auto s = high_resolution_clock::now();
     advection_simulation(N, NT, L, T, u, v);
+    auto e = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(e - s);
+    cout << 1e6*duration.count() << " sec" << endl;
     cout << "Simulation Complete!" << endl;
 
     return 0;
