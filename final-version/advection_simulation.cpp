@@ -172,7 +172,8 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     // Initialize variables
     double** C_n = create_matrix(N);
     double** C_n_1 = create_matrix(N);
-    double** global_output = create_matrix(N*nprocs_per_dim);
+    int N_glob = N*nprocs_per_dim;
+    double** global_output = create_matrix(N_glob);
 
     double dx = L/N;
     double dt = T/NT;
@@ -214,8 +215,35 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     // Swap references
     swap(C_n, C_n_1);
 
-    // Write to file
-    write_to_file(C_n, "./final-version/initial_gaussian.txt", nprocs_per_dim, N);
+    // Initialize local buffer for each processor
+    double** local_buffer = create_matrix(N);
+
+    // For processor 0
+    if (mype == 0) {
+        // Processor 0's contribution to the global output
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                global_output[i][j] = C_n[i][j];
+            }
+        }
+
+        // Every other processor's contribution to the global output
+        for (int i = 1; i < nprocs; i++) {
+            MPI_Recv(*local_buffer, pow(N, 2), MPI_DOUBLE, i, 0, comm2d, MPI_STATUS_IGNORE);
+            for (int j = N * (i % nprocs_per_dim); j < N * ((i % nprocs_per_dim)+1); j++) {
+                for (int k = N * floor(i / nprocs_per_dim); k < N * (floor(i / nprocs_per_dim) + 1); k++) {
+                    global_output[j][k] = local_buffer[j - (int(N) * (i % nprocs_per_dim))][k - (int(N * floor(i / nprocs_per_dim)))];
+                }
+            }
+        }
+        // Write to file
+        write_to_file(global_output, "./final-version/initial_gaussian.txt", nprocs_per_dim, N);
+    }
+    // For other processors
+    else {
+        MPI_Send(*C_n, pow(N, 2), MPI_DOUBLE, 0, 0, comm2d);
+    }
+    
 
     for (int n = 0; n < NT; n++) {
 
@@ -247,6 +275,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
         
         // Output grind rate
         cout << "Iteration: " << n << " - Grind Rate: " << floor(1/(te-ts)) << " iter/sec" << endl;
+
         // Compute best grind rate
         best_grind_rate = max(best_grind_rate, floor(1/(te-ts)));
 
