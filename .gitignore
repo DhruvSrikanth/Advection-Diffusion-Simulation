@@ -1,13 +1,12 @@
-./vscode/*.
+vscode/
 
-*.DS_Store
 
-# ./milestone-1/advection_simulation.dSYM
-# ./milestone-2/advection_simulation.dSYM
-# ./visualizing/advection_simulation.dSYM
-# ./final-version/advection_simulation.dSYM
+milestone-1/advection_simulation.dSYM
+milestone-2/advection_simulation.dSYM
+visualizing/advection_simulation.dSYM
+final-version/advection_simulation.dSYM
 
-# ./milestone-1/advection_simulation
-# ./milestone-2/advection_simulation
-# ./visualizing/advection_simulation
-# ./final-version/advection_simulation
+milestone-1/advection_simulation
+milestone-2/advection_simulation
+visualizing/advection_simulation
+final-version/advection_simulation
