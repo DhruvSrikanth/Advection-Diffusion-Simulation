@@ -82,21 +82,21 @@ double* contiguous_memory_alloc(int const& N) {
     return mat;
 }
 
-void initial_gaussian(double** C_n, int const& N, double const& L, int const& N_glob, double** global_output, int const& mype, int const& nprocs_per_dim) {
+void initial_gaussian(double** C_n, int const& N, double const& L, int const& N_glob, int const& mype, int const& nprocs_per_dim) {
     int i;
     int j;
     int glob_i;
     int glob_j; 
     int glob_i_start = (nprocs_per_dim - 1 - floor(mype / nprocs_per_dim)) * N;
     int glob_j_start = (mype % nprocs_per_dim) * N;
+
     // Using multiple threads, initialize the gaussian matrix
-    #pragma omp parallel for default(none) private(i, j, glob_i, glob_j) shared(global_output, C_n, N, L, mype, nprocs_per_dim, N_glob, glob_i_start, glob_j_start) schedule(guided) 
+    #pragma omp parallel for default(none) private(i, j, glob_i, glob_j) shared(C_n, N, L, mype, nprocs_per_dim, N_glob, glob_i_start, glob_j_start) schedule(guided) 
     for (i = 0; i < N; i++) {
         glob_i =  glob_i_start + i;
         for (j = 0; j < N; j++) {
             glob_j =  glob_j_start + j;
             C_n[i][j] = exp(-(pow((glob_j-(N_glob/2))*L/N_glob, 2) + pow((glob_i-(N_glob/2))*L/N_glob, 2))/(L*L/8));
-            // global_output[glob_i][glob_j] = C_n[i][j];
         }
     }
 
@@ -215,7 +215,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     assert(dt<=dx/sqrt(2*(u*u + v*v)));
 
     // Initialize gaussian grid
-    initial_gaussian(C_n, N, L, N_glob, global_output, mype, nprocs_per_dim);
+    initial_gaussian(C_n, N, L, N_glob, mype, nprocs_per_dim);
 
     // Initialize columns to send
     double col_1[N];
