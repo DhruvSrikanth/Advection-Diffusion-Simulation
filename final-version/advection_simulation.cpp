@@ -17,7 +17,7 @@ using namespace std;
 #define DIMENSION 2
 
 // Number of threads in each dimension
-#define N_THREADS 6
+#define N_THREADS 2
 
 void write_to_file(double** C_n, string const& filename, int const& NT, int const& N) { 
     // Allocate memory for the file
@@ -67,7 +67,7 @@ double** create_matrix(int const& N){
 }
 
 int contiguous_memory_index(int const& i, int const& j, int const& N) {
-    return i + (N * j);
+    return j + (N * i);
 }
 
 double* contiguous_memory_alloc(int const& N) {
@@ -206,7 +206,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     int N_glob = N*nprocs_per_dim;
     double** global_output = create_matrix(N_glob);
 
-    double dx = L/N;
+    double dx = L/N_glob;
     double dt = T/NT;
 
     double best_grind_rate = 0.0;
@@ -422,6 +422,14 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
             }
         }
     }
+
+    // Save all procsor's data to file
+    // char filename[100];
+    // cout << "Writing output to file..." << endl;
+    // int dummy_var = sprintf(filename, "./final-version/mype_%d.txt", mype);
+    // write_to_file(C_n, filename, 0, N);
+
+    // write_to_file(global_output, "./final-version/global_output.txt", 0, N_glob);
 
     // Best grind rate
     cout << "Best grind rate: " << best_grind_rate << " iter/sec" << endl;
