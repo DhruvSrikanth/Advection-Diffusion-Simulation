@@ -16,7 +16,10 @@ using namespace std;
 // We have a 2D grid of processors
 #define DIMENSION 2
 
-void write_to_file(double** const& C_n, string const& filename, int const& NT, int const& N) { 
+// Number of threads in each dimension
+#define N_THREADS 4
+
+void write_to_file(double** C_n, string const& filename, int const& NT, int const& N) { 
     // Allocate memory for the file
     ofstream file;
     file.open(filename);
@@ -63,18 +66,46 @@ double** create_matrix(int const& N){
     return mat;
 }
 
-double** initial_gaussian(double** C_n, int const& N, double const& L) {
+int contiguous_memory_index(int const& i, int const& j, int const& N) {
+    return i + (N * j);
+}
+
+double* contiguous_memory_alloc(int const& N) {
+    // Allocate memory for the matrix
+    double* mat = new double[N * N];
+    // Initialize the matrix
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            mat[contiguous_memory_index(i, j, N)] = 0.0;
+        }
+    }
+    return mat;
+}
+
+void initial_gaussian(double** C_n, int const& N, double const& L, int const& N_glob, double** global_output, int const& mype, int const& nprocs_per_dim) {
     int i;
     int j;
+    int glob_i;
+    int glob_j; 
+    int glob_i_start = (nprocs_per_dim - 1 - floor(mype / nprocs_per_dim)) * N;
+    int glob_j_start = (mype % nprocs_per_dim) * N;
     // Using multiple threads, initialize the gaussian matrix
-    #pragma omp parallel for default(none) private(i, j) shared(C_n, N, L) schedule(guided) 
+    // #pragma omp parallel for default(none) private(i, j, glob_i, glob_j) shared(global_output, C_n, N, L, mype, nprocs_per_dim, N_glob, glob_i_start, glob_j_start) schedule(guided) 
     for (i = 0; i < N; i++) {
+        glob_i =  glob_i_start + i;
         for (j = 0; j < N; j++) {
-            C_n[i][j] = exp(-(pow((i-N/2)*L/N, 2) + pow((j-N/2)*L/N, 2))/(L*L/8));
+            glob_j =  glob_j_start + j;
+            C_n[i][j] = exp(-(pow((glob_j-(N_glob/2))*L/N_glob, 2) + pow((glob_i-(N_glob/2))*L/N_glob, 2))/(L*L/8));
+            // global_output[glob_i][glob_j] = C_n[i][j];
         }
     }
 
-    return C_n;
+    // char filename[100];
+    // cout << "Writing output to file..." << endl;
+    // int dummy_var = sprintf(filename, "./final-version/mype_%d.txt", mype);
+    // write_to_file(C_n, filename, 0, N);
+
+    // write_to_file(global_output, "./final-version/global_output.txt", 0, N_glob);
 }
 
 void apply_boundary_conditions(int const& N, double const& dt, double const& dx, double const& u, double const& v, double** C_n, double** C_n_1, double* const& left_ghost_cells, double* const& right_ghost_cells, double* const& up_ghost_cells, double* const& down_ghost_cells) {
@@ -184,7 +215,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     assert(dt<=dx/sqrt(2*(u*u + v*v)));
 
     // Initialize gaussian grid
-    C_n = initial_gaussian(C_n, N, L);
+    initial_gaussian(C_n, N, L, N_glob, global_output, mype, nprocs_per_dim);
 
     // Initialize columns to send
     double col_1[N];
@@ -216,34 +247,54 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     swap(C_n, C_n_1);
 
     // Initialize local buffer for each processor
-    double** local_buffer = create_matrix(N);
+    double* contiguous_local_buffer = contiguous_memory_alloc(N);
 
     // For processor 0
     if (mype == 0) {
         // Processor 0's contribution to the global output
+        int glob_i;
+        int glob_j; 
         for (int i = 0; i < N; i++) {
+            glob_i =  ((nprocs_per_dim - 1) * N) + i;
             for (int j = 0; j < N; j++) {
-                global_output[i][j] = C_n[i][j];
+                glob_j = j;
+                global_output[glob_i][glob_j] = C_n[i][j];
             }
         }
 
         // Every other processor's contribution to the global output
-        for (int i = 1; i < nprocs; i++) {
-            MPI_Recv(*local_buffer, pow(N, 2), MPI_DOUBLE, i, 0, comm2d, MPI_STATUS_IGNORE);
-            for (int j = N * (i % nprocs_per_dim); j < N * ((i % nprocs_per_dim)+1); j++) {
-                for (int k = N * floor(i / nprocs_per_dim); k < N * (floor(i / nprocs_per_dim) + 1); k++) {
-                    global_output[j][k] = local_buffer[j - (int(N) * (i % nprocs_per_dim))][k - (int(N * floor(i / nprocs_per_dim)))];
+        for (int x = 1; x < nprocs; x++) {
+            MPI_Recv(contiguous_local_buffer, N*N, MPI_DOUBLE, x, 0, comm2d, MPI_STATUS_IGNORE);
+            for (int i = 0; i < N; i++) {
+                glob_i =  ((nprocs_per_dim - 1 - floor(x / nprocs_per_dim)) * N) + i;
+                for (int j = 0; j < N; j++) {
+                    glob_j = ((x % nprocs_per_dim) * N) + j;
+                    global_output[glob_i][glob_j] = contiguous_local_buffer[contiguous_memory_index(i, j, N)];
                 }
             }
         }
         // Write to file
-        write_to_file(global_output, "./final-version/initial_gaussian.txt", nprocs_per_dim, N);
+        write_to_file(global_output, "./final-version/initial_gaussian.txt", nprocs_per_dim, N_glob);
+        
     }
     // For other processors
     else {
-        MPI_Send(*C_n, pow(N, 2), MPI_DOUBLE, 0, 0, comm2d);
+        double* contiguous_C_n = contiguous_memory_alloc(N);
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                contiguous_C_n[contiguous_memory_index(i, j, N)] = C_n[i][j];
+            }
+        }
+        MPI_Send(contiguous_C_n, N*N, MPI_DOUBLE, 0, 0, comm2d);
     }
-    
+
+    // char filename[100];
+    // cout << "Writing output to file..." << endl;
+    // int dummy_var = sprintf(filename, "./final-version/mype_%d.txt", mype);
+    // write_to_file(C_n, filename, 0, N);
+
+    // BREAKPOINT
+    // return ;    
 
     for (int n = 0; n < NT; n++) {
 
@@ -283,67 +334,91 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
         if (n == (NT/2) - 1) {
 
             // Initialize local buffer for each processor
-            double** local_buffer = create_matrix(N);
+            double* contiguous_local_buffer = contiguous_memory_alloc(N);
 
             // For processor 0
             if (mype == 0) {
                 // Processor 0's contribution to the global output
+                int glob_i;
+                int glob_j; 
                 for (int i = 0; i < N; i++) {
+                    glob_i =  ((nprocs_per_dim - 1) * N) + i;
                     for (int j = 0; j < N; j++) {
-                        global_output[i][j] = C_n[i][j];
+                        glob_j = j;
+                        global_output[glob_i][glob_j] = C_n[i][j];
                     }
                 }
 
                 // Every other processor's contribution to the global output
-                for (int i = 1; i < nprocs; i++) {
-                    MPI_Recv(*local_buffer, pow(N, 2), MPI_DOUBLE, i, 0, comm2d, MPI_STATUS_IGNORE);
-                    for (int j = N * (i % nprocs_per_dim); j < N * ((i % nprocs_per_dim)+1); j++) {
-                        for (int k = N * floor(i / nprocs_per_dim); k < N * (floor(i / nprocs_per_dim) + 1); k++) {
-                            global_output[j][k] = local_buffer[j - (int(N) * (i % nprocs_per_dim))][k - (int(N * floor(i / nprocs_per_dim)))];
+                for (int x = 1; x < nprocs; x++) {
+                    MPI_Recv(contiguous_local_buffer, N*N, MPI_DOUBLE, x, 0, comm2d, MPI_STATUS_IGNORE);
+                    for (int i = 0; i < N; i++) {
+                        glob_i =  ((nprocs_per_dim - 1 - floor(x / nprocs_per_dim)) * N) + i;
+                        for (int j = 0; j < N; j++) {
+                            glob_j = ((x % nprocs_per_dim) * N) + j;
+                            global_output[glob_i][glob_j] = contiguous_local_buffer[contiguous_memory_index(i, j, N)];
                         }
                     }
                 }
 
                 // Write to file
-                write_to_file(global_output, "./final-version/simulation_NTby2_timesteps.txt", nprocs_per_dim, N);
+                write_to_file(global_output, "./final-version/simulation_NTby2_timesteps.txt", nprocs_per_dim, N_glob);
             }
             // For other processors
             else {
-                MPI_Send(*C_n, pow(N, 2), MPI_DOUBLE, 0, 0, comm2d);
+                double* contiguous_C_n = contiguous_memory_alloc(N);
+                for (int i = 0; i < N; i++) {
+                    for (int j = 0; j < N; j++) {
+                        contiguous_C_n[contiguous_memory_index(i, j, N)] = C_n[i][j];
+                    }
+                }
+                MPI_Send(contiguous_C_n, N*N, MPI_DOUBLE, 0, 0, comm2d);
             }
         } 
 
         // Write to file upon completion of simulation (time step = NT)
         else if (n == NT - 1) {
-
+            
             // Initialize local buffer for each processor
-            double** local_buffer = create_matrix(N);
+            double* contiguous_local_buffer = contiguous_memory_alloc(N);
 
             // For processor 0
             if (mype == 0) {
                 // Processor 0's contribution to the global output
+                int glob_i;
+                int glob_j; 
                 for (int i = 0; i < N; i++) {
+                    glob_i =  ((nprocs_per_dim - 1) * N) + i;
                     for (int j = 0; j < N; j++) {
-                        global_output[i][j] = C_n[i][j];
+                        glob_j = j;
+                        global_output[glob_i][glob_j] = C_n[i][j];
                     }
                 }
 
                 // Every other processor's contribution to the global output
-                for (int i = 1; i < nprocs; i++) {
-                    MPI_Recv(*local_buffer, pow(N, 2), MPI_DOUBLE, i, 0, comm2d, MPI_STATUS_IGNORE);
-                    for (int j = N * (i % nprocs_per_dim); j < N * ((i % nprocs_per_dim)+1); j++) {
-                        for (int k = N * floor(i / nprocs_per_dim); k < N * (floor(i / nprocs_per_dim) + 1); k++) {
-                            global_output[j][k] = local_buffer[j - (int(N) * (i % nprocs_per_dim))][k - (int(N * floor(i / nprocs_per_dim)))];
+                for (int x = 1; x < nprocs; x++) {
+                    MPI_Recv(contiguous_local_buffer, N*N, MPI_DOUBLE, x, 0, comm2d, MPI_STATUS_IGNORE);
+                    for (int i = 0; i < N; i++) {
+                        glob_i =  ((nprocs_per_dim - 1 - floor(x / nprocs_per_dim)) * N) + i;
+                        for (int j = 0; j < N; j++) {
+                            glob_j = ((x % nprocs_per_dim) * N) + j;
+                            global_output[glob_i][glob_j] = contiguous_local_buffer[contiguous_memory_index(i, j, N)];
                         }
                     }
                 }
 
                 // Write to file
-                write_to_file(global_output, "./final-version/simulation_NT_timesteps.txt", nprocs_per_dim, N);
+                write_to_file(global_output, "./final-version/simulation_NT_timesteps.txt", nprocs_per_dim, N_glob);
             }
             // For other processors 
             else {
-                MPI_Send(*C_n, pow(N, 2), MPI_DOUBLE, 0, 0, comm2d);
+                double* contiguous_C_n = contiguous_memory_alloc(N);
+                for (int i = 0; i < N; i++) {
+                    for (int j = 0; j < N; j++) {
+                        contiguous_C_n[contiguous_memory_index(i, j, N)] = C_n[i][j];
+                    }
+                }
+                MPI_Send(contiguous_C_n, N*N, MPI_DOUBLE, 0, 0, comm2d);
             }
         }
     }
@@ -407,7 +482,7 @@ int main(int argc, char** argv) {
     cout << "Estimated memeory usage = " << N_loc*N_loc*sizeof(double)/1e6 << " MB" << "\n" << endl;
 
     // Set number of threads
-    num_threads = 6;
+    num_threads = N_THREADS;
     cout << "Number of threads = " << num_threads << "\n" << endl;
     omp_set_num_threads(num_threads);
 

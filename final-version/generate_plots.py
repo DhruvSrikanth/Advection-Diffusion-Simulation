@@ -22,8 +22,8 @@ def generate_plots(filename):
     n_procs_per_dim, data = read_file(filename)
     plt.imshow(data)
 
-    plt.xticks([])
-    plt.yticks([])
+    # plt.xticks([])
+    # plt.yticks([])
 
     # plt.xlim(1, data.shape[0]*n_procs_per_dim)
     # plt.ylim(1, data.shape[0]*n_procs_per_dim)
@@ -42,7 +42,15 @@ def generate_plots(filename):
 
 if __name__ == "__main__":
     generate_plots("./final-version/initial_gaussian.txt")
+    # generate_plots("./final-version/mype_0.txt")
+    # generate_plots("./final-version/mype_1.txt")
+    # generate_plots("./final-version/mype_2.txt")
+    # generate_plots("./final-version/mype_3.txt")
+    # generate_plots("./final-version/global_output.txt")
+    
 
     generate_plots("./final-version/simulation_NTby2_timesteps.txt")
 
     generate_plots("./final-version/simulation_NT_timesteps.txt")
+    
+    pass
