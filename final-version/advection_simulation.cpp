@@ -17,7 +17,7 @@ using namespace std;
 #define DIMENSION 2
 
 // Number of threads in each dimension
-#define N_THREADS 4
+#define N_THREADS 6
 
 void write_to_file(double** C_n, string const& filename, int const& NT, int const& N) { 
     // Allocate memory for the file
@@ -90,7 +90,7 @@ void initial_gaussian(double** C_n, int const& N, double const& L, int const& N_
     int glob_i_start = (nprocs_per_dim - 1 - floor(mype / nprocs_per_dim)) * N;
     int glob_j_start = (mype % nprocs_per_dim) * N;
     // Using multiple threads, initialize the gaussian matrix
-    // #pragma omp parallel for default(none) private(i, j, glob_i, glob_j) shared(global_output, C_n, N, L, mype, nprocs_per_dim, N_glob, glob_i_start, glob_j_start) schedule(guided) 
+    #pragma omp parallel for default(none) private(i, j, glob_i, glob_j) shared(global_output, C_n, N, L, mype, nprocs_per_dim, N_glob, glob_i_start, glob_j_start) schedule(guided) 
     for (i = 0; i < N; i++) {
         glob_i =  glob_i_start + i;
         for (j = 0; j < N; j++) {
