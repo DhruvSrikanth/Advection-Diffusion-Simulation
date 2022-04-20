@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#SBATCH --job-name=dhruvsrikanth-hpc
+#SBATCH --output=batch_file.stdout
+#SBATCH --error=batch_file.stderr
+#SBATCH --time=00:05:00
+#SBATCH --partition=caslake
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=48
+#SBATCH --mem-per-cpu=2000
+
+
+module load openmpi python
+module show openmpi
+
+mpi++ ./final-version/advection_simulation.cpp -o ./final-version/advection_simulation -O3 -ffast-math -mtune=native -march=native -fopenmp -lmpi
+
+mpiexec --bind-to none --report-bindings ./final-version/advection_simulation 400 20000 1.0 1.0e6 5.0e-7 2.85e-7 48
+
+rm ./final-version/advection_simulation
+rm ./final-version/initial_gaussian.txt
+rm ./final-version/simulation_NTby2_timesteps.txt
+rm ./final-version/simulation_NT_timesteps.txt
+
+
+# python3 ./final-version/generate_plots.py

@@ -16,8 +16,8 @@ using namespace std;
 // We have a 2D grid of processors
 #define DIMENSION 2
 
-// Number of threads in each dimension
-#define N_THREADS 2
+// // Number of threads in each dimension
+// #define N_THREADS 2
 
 void write_to_file(double** C_n, string const& filename, int const& NT, int const& N) { 
     // Allocate memory for the file
@@ -108,97 +108,308 @@ void initial_gaussian(double** C_n, int const& N, double const& L, int const& N_
     // write_to_file(global_output, "./final-version/global_output.txt", 0, N_glob);
 }
 
-void apply_boundary_conditions(int const& N, double const& dt, double const& dx, double const& u, double const& v, double** C_n, double** C_n_1, double* const& left_ghost_cells, double* const& right_ghost_cells, double* const& up_ghost_cells, double* const& down_ghost_cells) {
+void apply_boundary_conditions(int const& N, double const& dt, double const& dx, double const& u, double const& v, double** C_n, double** C_n_1, double* const& left_ghost_cells, double* const& right_ghost_cells, double* const& up_ghost_cells, double* const& down_ghost_cells, string const& scheme) {
     // Initialize the variables
     double C_n_up;
+    double C_n_up2;
     double C_n_down;
+    double C_n_down2;
     double C_n_left;
+    double C_n_left2;
     double C_n_right;
+    double C_n_right2;
     int i;
     int j;
 
+
     // Use multiple threads to apply the boundary conditions
-    #pragma omp parallel for default(none) private(i, j, C_n_up, C_n_down, C_n_left, C_n_right) shared(C_n, C_n_1, N, dt, dx, u, v, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells) schedule(guided)
+    #pragma omp parallel for default(none) private(i, j, C_n_up, C_n_down, C_n_left, C_n_right, C_n_up2, C_n_down2, C_n_left2, C_n_right2) shared(C_n, C_n_1, N, dt, dx, u, v, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells, scheme) schedule(guided)
     for (i = 0; i < N; i ++) {
         for (j = 0; j < N; j ++) {
             // Apply periodic boundary conditions
             // Middle rows
-            if (i != 0 && i != N-1) {
-                C_n_up = C_n[i-1][j];
-                C_n_down = C_n[i+1][j];
-                // Middle columns
-                if (j != 0 && j != N-1) {
-                    C_n_left = C_n[i][j-1];
-                    C_n_right = C_n[i][j+1];
+            if (scheme == "Second-Order-Upwind") {
+                if (i == 0) {
+                    C_n_up = up_ghost_cells[j];
+                    C_n_up2 = up_ghost_cells[j + N];
+                    C_n_down = C_n[i+1][j];
+                    C_n_down2 = C_n[i+2][j];
+                    if (j == 0) {
+                        C_n_left = left_ghost_cells[i];
+                        C_n_left2 = left_ghost_cells[i + N];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = right_ghost_cells[i];
+                        C_n_right2 = right_ghost_cells[i + N];
+                    }
+                    else if (j == 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = left_ghost_cells[i];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 2) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = right_ghost_cells[i];
+                    }
+                    else {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
                 }
-                // Leftmost column
-                else if (j == 0) {
-                    //C_n_left = C_n[i][N-1];
-                    C_n_left = left_ghost_cells[i];
-                    C_n_right = C_n[i][j+1];
-                } 
-                // Rightmost column
+                else if (i == N - 1) {
+                    C_n_up = C_n[i-1][j];
+                    C_n_up2 = C_n[i-2][j];
+                    C_n_down = down_ghost_cells[j];
+                    C_n_down2 = down_ghost_cells[j + N];
+                    if (j == 0) {
+                        C_n_left = left_ghost_cells[i];
+                        C_n_left2 = left_ghost_cells[i + N];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = right_ghost_cells[i];
+                        C_n_right2 = right_ghost_cells[i + N];
+                    }
+                    else if (j == 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = left_ghost_cells[i];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 2) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = right_ghost_cells[i];
+                    }
+                    else {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+
+                }
+                else if (i == 1) {
+                    C_n_up = C_n[i-1][j];
+                    C_n_up2 = up_ghost_cells[j];
+                    C_n_down = C_n[i+1][j];
+                    C_n_down2 = C_n[i+2][j];
+                    if (j == 0) {
+                        C_n_left = left_ghost_cells[i];
+                        C_n_left2 = left_ghost_cells[i + N];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = right_ghost_cells[i];
+                        C_n_right2 = right_ghost_cells[i + N];
+                    }
+                    else if (j == 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = left_ghost_cells[i];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 2) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = right_ghost_cells[i];
+                    }
+                    else {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                }
+                else if (i == N - 2) {
+                    C_n_up = C_n[i-1][j];
+                    C_n_up2 = C_n[i-2][j];
+                    C_n_down = C_n[i+1][j];
+                    C_n_down2 = down_ghost_cells[j];
+                    if (j == 0) {
+                        C_n_left = left_ghost_cells[i];
+                        C_n_left2 = left_ghost_cells[i + N];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = right_ghost_cells[i];
+                        C_n_right2 = right_ghost_cells[i + N];
+                    }
+                    else if (j == 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = left_ghost_cells[i];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 2) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = right_ghost_cells[i];
+                    }
+                    else {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                }
                 else {
-                    C_n_left = C_n[i][j-1];
-                    // C_n_right = C_n[i][0];
-                    C_n_right = right_ghost_cells[i];
+                    C_n_up = C_n[i-1][j];
+                    C_n_up2 = C_n[i-2][j];
+                    C_n_down = C_n[i+1][j];
+                    C_n_down2 = C_n[i+2][j];
+                    if (j == 0) {
+                        C_n_left = left_ghost_cells[i];
+                        C_n_left2 = left_ghost_cells[i + N];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = right_ghost_cells[i];
+                        C_n_right2 = right_ghost_cells[i + N];
+                    }
+                    else if (j == 1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = left_ghost_cells[i];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
+                    else if (j == N - 2) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = right_ghost_cells[i];
+                    }
+                    else {
+                        C_n_left = C_n[i][j-1];
+                        C_n_left2 = C_n[i][j-2];
+                        C_n_right = C_n[i][j+1];
+                        C_n_right2 = C_n[i][j+2];
+                    }
                 }
             }
-            // Top row
-            else if (i == 0) {
-                // C_n_up = C_n[N-1][j];
-                C_n_up = up_ghost_cells[j];
-                C_n_down = C_n[i+1][j];
-                // Middle columns
-                if (j != 0 && j != N-1) {
-                    C_n_left = C_n[i][j-1];
-                    C_n_right = C_n[i][j+1];
-                }
-                // Leftmost column
-                else if (j == 0) {
-                    // C_n_left = C_n[i][N-1];
-                    C_n_left = left_ghost_cells[i];
-                    C_n_right = C_n[i][j+1];
-                } 
-                // Rightmost column
-                else {
-                    C_n_left = C_n[i][j-1];
-                    // C_n_right = C_n[i][0];
-                    C_n_right = right_ghost_cells[i];
-                }
-            } 
-            // Bottom row
             else {
-                C_n_up = C_n[i-1][j];
-                // C_n_down = C_n[0][j];
-                C_n_down = down_ghost_cells[j];
-                // Middle columns
-                if (j != 0 && j != N-1) {
-                    C_n_left = C_n[i][j-1];
-                    C_n_right = C_n[i][j+1];
+                if (i != 0 && i != N-1) {
+                    C_n_up = C_n[i-1][j];
+                    C_n_down = C_n[i+1][j];
+                    // Middle columns
+                    if (j != 0 && j != N-1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_right = C_n[i][j+1];
+                    }
+                    // Leftmost column
+                    else if (j == 0) {
+                        //C_n_left = C_n[i][N-1];
+                        C_n_left = left_ghost_cells[i];
+                        C_n_right = C_n[i][j+1];
+                    } 
+                    // Rightmost column
+                    else {
+                        C_n_left = C_n[i][j-1];
+                        // C_n_right = C_n[i][0];
+                        C_n_right = right_ghost_cells[i];
+                    }
                 }
-                // Leftmost column
-                else if (j == 0) {
-                    // C_n_left = C_n[i][N-1];
-                    C_n_left = left_ghost_cells[i];
-                    C_n_right = C_n[i][j+1];
+                // Top row
+                else if (i == 0) {
+                    // C_n_up = C_n[N-1][j];
+                    C_n_up = up_ghost_cells[j];
+                    C_n_down = C_n[i+1][j];
+                    // Middle columns
+                    if (j != 0 && j != N-1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_right = C_n[i][j+1];
+                    }
+                    // Leftmost column
+                    else if (j == 0) {
+                        // C_n_left = C_n[i][N-1];
+                        C_n_left = left_ghost_cells[i];
+                        C_n_right = C_n[i][j+1];
+                    } 
+                    // Rightmost column
+                    else {
+                        C_n_left = C_n[i][j-1];
+                        // C_n_right = C_n[i][0];
+                        C_n_right = right_ghost_cells[i];
+                    }
                 } 
-                // Rightmost column
+                // Bottom row
                 else {
-                    C_n_left = C_n[i][j-1];
-                    // C_n_right = C_n[i][0];
-                    C_n_right = right_ghost_cells[i];
+                    C_n_up = C_n[i-1][j];
+                    // C_n_down = C_n[0][j];
+                    C_n_down = down_ghost_cells[j];
+                    // Middle columns
+                    if (j != 0 && j != N-1) {
+                        C_n_left = C_n[i][j-1];
+                        C_n_right = C_n[i][j+1];
+                    }
+                    // Leftmost column
+                    else if (j == 0) {
+                        // C_n_left = C_n[i][N-1];
+                        C_n_left = left_ghost_cells[i];
+                        C_n_right = C_n[i][j+1];
+                    } 
+                    // Rightmost column
+                    else {
+                        C_n_left = C_n[i][j-1];
+                        // C_n_right = C_n[i][0];
+                        C_n_right = right_ghost_cells[i];
+                    }
                 }
             }
-            
             // Compute next time step
+            C_n[i][j] = 0.25*(C_n_up + C_n_down + C_n_left + C_n_right);
+
             // Based on LAX formulation
-            C_n_1[i][j] = 0.25*(C_n_up + C_n_down + C_n_left + C_n_right) - (dt/(2*dx))*(u*(C_n_down - C_n_up) + v*(C_n_right - C_n_left));
+            if (scheme == "LAX") {
+                C_n_1[i][j] = C_n[i][j] - (dt/(2*dx))*(u*(C_n_down - C_n_up) + v*(C_n_right - C_n_left));
+            }
+            else if (scheme == "First-Order-Upwind") {
+
+                // Based on First Order Upwind Scheme
+                if (u*u + v*v > 0) { 
+                    C_n_1[i][j] = C_n[i][j] - (dt/dx)*(u*(C_n[i][j] - C_n_up) + v*(C_n[i][j] - C_n_left));
+                }
+                else if (u*u + v*v < 0) {
+                    C_n_1[i][j] = C_n[i][j] - (dt/dx)*(u*(C_n_down - C_n[i][j]) + v*(C_n_right - C_n[i][j]));
+                }
+            }
+            else if (scheme == "Second-Order-Upwind") {
+                if (u*u + v*v > 0) {
+                    C_n_1[i][j] = C_n[i][j] - (dt/(2*dx))*(u*(3*C_n[i][j] - 4*C_n_down + C_n_down2) + v*(3*C_n[i][j] - 4*C_n_left + C_n_left2));
+                }
+                else if (u*u + v*v < 0) {
+                    C_n_1[i][j] = C_n[i][j] - (dt/(2*dx))*(u*(4*C_n_up - C_n_up2 - 3*C_n[i][j]) + v*(4*C_n_right - 3*C_n[i][j] - C_n_right2));
+                }
+            }
         }
     }
 }
 
-void advection_simulation(int const& N, int const& NT, double const& L, double const& T, double const& u, double const& v, int const& up, int const& down, int const& left, int const& right, MPI_Comm const& comm2d, int const& mype, int const& nprocs_per_dim, int const& nprocs) {
+void advection_simulation(int const& N, int const& NT, double const& L, double const& T, double const& u, double const& v, int const& up, int const& down, int const& left, int const& right, MPI_Comm const& comm2d, int const& mype, int const& nprocs_per_dim, int const& nprocs, string const& scheme) {
      
     // Initialize variables
     double** C_n = create_matrix(N);
@@ -218,30 +429,77 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     initial_gaussian(C_n, N, L, N_glob, mype, nprocs_per_dim);
 
     // Initialize columns to send
-    double col_1[N];
-    double col_n[N];
+    if (scheme == "Second-Order-Upwind") {
+        double col_1[2*N];
+        double col_n[2*N];
+        double row_1[2*N];
+        double row_n[2*N];
 
-    for (int i = 0; i < N; i++) {
-        col_1[i] = C_n[i][0];
-        col_n[i] = C_n[i][N-1];
+        for (int i = 0; i < N; i++) {
+            // left 2N columns
+            col_1[i] = C_n[i][0];
+            col_1[i+N] = C_n[i][1];
+            
+            // right 2N columns
+            col_n[i] = C_n[i][N-1];
+            col_n[i+N] = C_n[i][N-2];
+        }
+
+
+        for (int i = 0; i < N; i++) {
+            // top 2N rows
+            row_1[i] = C_n[0][i];
+            row_1[i+N] = C_n[1][i];
+
+            // bottom 2N rows
+            row_n[i] = C_n[N-1][i];
+            row_n[i+N] = C_n[N-2][i];
+        } 
+
+        double up_ghost_cells[2*N];
+        double down_ghost_cells[2*N];
+        double left_ghost_cells[2*N];
+        double right_ghost_cells[2*N];
+
+        MPI_Status status;
+
+        // Send and receive ghost cells
+        MPI_Sendrecv(&row_1, 2*N, MPI_DOUBLE, up, 99, &down_ghost_cells, 2*N, MPI_DOUBLE, down, MPI_ANY_TAG, comm2d, &status);
+        MPI_Sendrecv(&row_n, 2*N, MPI_DOUBLE, down, 99, &up_ghost_cells, 2*N, MPI_DOUBLE, up, MPI_ANY_TAG, comm2d, &status);
+        MPI_Sendrecv(&col_1, 2*N, MPI_DOUBLE, left, 99, &right_ghost_cells, 2*N, MPI_DOUBLE, right, MPI_ANY_TAG, comm2d, &status);
+        MPI_Sendrecv(&col_n, 2*N, MPI_DOUBLE, right, 99, &left_ghost_cells, 2*N, MPI_DOUBLE, left, MPI_ANY_TAG, comm2d, &status);
+
+        // Apply BCs
+        apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells, scheme);
+
     }
+    else {
+        double col_1[N];
+        double col_n[N];
 
-    MPI_Status status;
-    
-    // Initialize ghost cells
-    double up_ghost_cells[N];
-    double down_ghost_cells[N];
-    double left_ghost_cells[N];
-    double right_ghost_cells[N];
+        for (int i = 0; i < N; i++) {
+            col_1[i] = C_n[i][0];
+            col_n[i] = C_n[i][N-1];
+        }
+        
+        double up_ghost_cells[N];
+        double down_ghost_cells[N];
+        double left_ghost_cells[N];
+        double right_ghost_cells[N];
 
-    // Send and receive ghost cells
-    MPI_Sendrecv(C_n[0], N, MPI_DOUBLE, up, 99, &down_ghost_cells, N, MPI_DOUBLE, down, MPI_ANY_TAG, comm2d, &status);
-    MPI_Sendrecv(C_n[N-1], N, MPI_DOUBLE, down, 99, &up_ghost_cells, N, MPI_DOUBLE, up, MPI_ANY_TAG, comm2d, &status);
-    MPI_Sendrecv(&col_1, N, MPI_DOUBLE, left, 99, &right_ghost_cells, N, MPI_DOUBLE, right, MPI_ANY_TAG, comm2d, &status);
-    MPI_Sendrecv(&col_n, N, MPI_DOUBLE, right, 99, &left_ghost_cells, N, MPI_DOUBLE, left, MPI_ANY_TAG, comm2d, &status);
+        MPI_Status status;
+
+        // Send and receive ghost cells
+        MPI_Sendrecv(C_n[0], N, MPI_DOUBLE, up, 99, &down_ghost_cells, N, MPI_DOUBLE, down, MPI_ANY_TAG, comm2d, &status);
+        MPI_Sendrecv(C_n[N-1], N, MPI_DOUBLE, down, 99, &up_ghost_cells, N, MPI_DOUBLE, up, MPI_ANY_TAG, comm2d, &status);
+        MPI_Sendrecv(&col_1, N, MPI_DOUBLE, left, 99, &right_ghost_cells, N, MPI_DOUBLE, right, MPI_ANY_TAG, comm2d, &status);
+        MPI_Sendrecv(&col_n, N, MPI_DOUBLE, right, 99, &left_ghost_cells, N, MPI_DOUBLE, left, MPI_ANY_TAG, comm2d, &status);
+
+        // Apply BCs
+        apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells, scheme);
+
+    }
     
-    // Apply BCs
-    apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells);
     
     // Swap references
     swap(C_n, C_n_1);
@@ -298,25 +556,80 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
 
     for (int n = 0; n < NT; n++) {
 
-        // Initialize columns to send
-        for (int i = 0; i < N; i++) {
-            col_1[i] = C_n[i][0];
-            col_n[i] = C_n[i][N-1];
-        }
-
-        MPI_Status status;
-
-        // Send and receive ghost cells
-        MPI_Sendrecv(C_n[0], N, MPI_DOUBLE, up, 99, &down_ghost_cells, N, MPI_DOUBLE, down, MPI_ANY_TAG, comm2d, &status);
-        MPI_Sendrecv(C_n[N-1], N, MPI_DOUBLE, down, 99, &up_ghost_cells, N, MPI_DOUBLE, up, MPI_ANY_TAG, comm2d, &status);
-        MPI_Sendrecv(&col_1, N, MPI_DOUBLE, left, 99, &right_ghost_cells, N, MPI_DOUBLE, right, MPI_ANY_TAG, comm2d, &status);
-        MPI_Sendrecv(&col_n, N, MPI_DOUBLE, right, 99, &left_ghost_cells, N, MPI_DOUBLE, left, MPI_ANY_TAG, comm2d, &status);
-
         // Start timer
 	    double ts = MPI_Wtime();
+        
+        // Initialize columns to send
+        if (scheme == "Second-Order-Upwind") {
+            double col_1[2*N];
+            double col_n[2*N];
+            double row_1[2*N];
+            double row_n[2*N]; 
 
-        // Apply BCs
-        apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells);
+            double up_ghost_cells[2*N];
+            double down_ghost_cells[2*N];
+            double left_ghost_cells[2*N];
+            double right_ghost_cells[2*N];
+
+            for (int i = 0; i < N; i++) {
+                // left 2N columns
+                col_1[i] = C_n[i][0];
+                col_1[i+N] = C_n[i][1];
+                
+                // right 2N columns
+                col_n[i] = C_n[i][N-1];
+                col_n[i+N] = C_n[i][N-2];
+            }
+
+            for (int i = 0; i < N; i++) {
+                // top 2N rows
+                row_1[i] = C_n[0][i];
+                row_1[i+N] = C_n[1][i];
+
+                // bottom 2N rows
+                row_n[i] = C_n[N-1][i];
+                row_n[i+N] = C_n[N-2][i];
+            }
+
+            MPI_Status status;
+
+            // Send and receive ghost cells
+            MPI_Sendrecv(&row_1, 2*N, MPI_DOUBLE, up, 99, &down_ghost_cells, 2*N, MPI_DOUBLE, down, MPI_ANY_TAG, comm2d, &status);
+            MPI_Sendrecv(&row_n, 2*N, MPI_DOUBLE, down, 99, &up_ghost_cells, 2*N, MPI_DOUBLE, up, MPI_ANY_TAG, comm2d, &status);
+            MPI_Sendrecv(&col_1, 2*N, MPI_DOUBLE, left, 99, &right_ghost_cells, 2*N, MPI_DOUBLE, right, MPI_ANY_TAG, comm2d, &status);
+            MPI_Sendrecv(&col_n, 2*N, MPI_DOUBLE, right, 99, &left_ghost_cells, 2*N, MPI_DOUBLE, left, MPI_ANY_TAG, comm2d, &status);
+
+            // Apply BCs
+            apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells, scheme);
+
+            
+        }
+        else {
+            double col_1[N];
+            double col_n[N];
+            
+            double up_ghost_cells[N];
+            double down_ghost_cells[N];
+            double left_ghost_cells[N];
+            double right_ghost_cells[N];
+
+            for (int i = 0; i < N; i++) {
+                col_1[i] = C_n[i][0];
+                col_n[i] = C_n[i][N-1];
+            }
+
+            MPI_Status status;
+
+            // Send and receive ghost cells
+            MPI_Sendrecv(C_n[0], N, MPI_DOUBLE, up, 99, &down_ghost_cells, N, MPI_DOUBLE, down, MPI_ANY_TAG, comm2d, &status);
+            MPI_Sendrecv(C_n[N-1], N, MPI_DOUBLE, down, 99, &up_ghost_cells, N, MPI_DOUBLE, up, MPI_ANY_TAG, comm2d, &status);
+            MPI_Sendrecv(&col_1, N, MPI_DOUBLE, left, 99, &right_ghost_cells, N, MPI_DOUBLE, right, MPI_ANY_TAG, comm2d, &status);
+            MPI_Sendrecv(&col_n, N, MPI_DOUBLE, right, 99, &left_ghost_cells, N, MPI_DOUBLE, left, MPI_ANY_TAG, comm2d, &status);
+
+            // Apply BCs
+            apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells, scheme);
+
+        }
         
         // Swap references
         swap(C_n, C_n_1);
@@ -437,33 +750,33 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
 
 int main(int argc, char** argv) {
     // MPI initialization
-	int mype, nprocs;
+    int mype, nprocs;
 
     MPI_Init(&argc, &argv);
-	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-	MPI_Comm_rank(MPI_COMM_WORLD, &mype);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mype);
 
     // MPI Cartesian Grid Creation
-	int dims[DIMENSION], periodic[DIMENSION], coords[DIMENSION];
-	int nprocs_per_dim = floor(sqrt(nprocs));
-	MPI_Comm comm2d;
-	dims[0] = nprocs_per_dim;
+    int dims[DIMENSION], periodic[DIMENSION], coords[DIMENSION];
+    int nprocs_per_dim = floor(sqrt(nprocs));
+    MPI_Comm comm2d;
+    dims[0] = nprocs_per_dim;
     dims[1] = nprocs_per_dim;
-	periodic[0] = 1;
+    periodic[0] = 1;
     periodic[1] = 1;
 
     // Create Cartesian Communicator
-	MPI_Cart_create(MPI_COMM_WORLD, DIMENSION, dims, periodic, 1, &comm2d);
+    MPI_Cart_create(MPI_COMM_WORLD, DIMENSION, dims, periodic, 1, &comm2d);
 
-	// Extract this MPI rank's N-dimensional coordinates from its place in the MPI Cartesian grid
-	MPI_Cart_coords(comm2d, mype, DIMENSION, coords);
+    // Extract this MPI rank's N-dimensional coordinates from its place in the MPI Cartesian grid
+    MPI_Cart_coords(comm2d, mype, DIMENSION, coords);
 
-	// Determine 2D neighbor ranks for this MPI rank
-	int left, right;
-	MPI_Cart_shift(comm2d, 1, 1, &left, &right);
-    
+    // Determine 2D neighbor ranks for this MPI rank
+    int left, right;
+    MPI_Cart_shift(comm2d, 1, 1, &left, &right);
+
     int down, up;
-	MPI_Cart_shift(comm2d, 0, 1, &down, &up);
+    MPI_Cart_shift(comm2d, 0, 1, &down, &up);
 
 
     // Initialize variables
@@ -475,8 +788,10 @@ int main(int argc, char** argv) {
     double T = stod(argv[4]);
     double u = stod(argv[5]);
     double v = stod(argv[6]);
+    int num_threads = stoi(argv[7]);
+    string scheme = argv[8];
 
-    int num_threads;
+    // int num_threads;
 
     cout << "Simulation Parameters:" << endl;
     cout << "N = " << N_glb << endl;
@@ -484,13 +799,14 @@ int main(int argc, char** argv) {
     cout << "L = " << L << endl;
     cout << "T = " << T << endl;
     cout << "u = " << u << endl;
-    cout << "v = " << v << "\n" << endl;
-    
+    cout << "v = " << v  << endl;
+    cout << "Scheme: " << scheme << "\n" << endl;
+
     // Esimate memory usage
     cout << "Estimated memeory usage = " << N_loc*N_loc*sizeof(double)/1e6 << " MB" << "\n" << endl;
 
     // Set number of threads
-    num_threads = N_THREADS;
+    // num_threads = N_THREADS;
     cout << "Number of threads = " << num_threads << "\n" << endl;
     omp_set_num_threads(num_threads);
 
@@ -499,7 +815,7 @@ int main(int argc, char** argv) {
 
     // Run simulation
     cout << "Simulating..." << endl;
-    advection_simulation(N_loc, NT, L, T, u, v, up, down, left, right, comm2d, mype, nprocs_per_dim, nprocs);
+    advection_simulation(N_loc, NT, L, T, u, v, up, down, left, right, comm2d, mype, nprocs_per_dim, nprocs, scheme);
     cout << "Simulation Complete!" << endl;
 
     // Stop timer
