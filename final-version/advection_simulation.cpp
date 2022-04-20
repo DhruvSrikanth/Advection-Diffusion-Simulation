@@ -399,10 +399,10 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
             }
             else if (scheme == "Second-Order-Upwind") {
                 if (u*u + v*v > 0) {
-                    C_n_1[i][j] = C_n[i][j] - (dt/(2*dx))*(u*(3*C_n[i][j] - 4*C_n_down + C_n_down2) + v*(3*C_n[i][j] - 4*C_n_left + C_n_left2));
+                    C_n_1[i][j] = C_n[i][j] - (dt/(2*dx))*(u*(3*C_n[i][j] - 4*C_n_up + C_n_up2) + v*(3*C_n[i][j] - 4*C_n_left + C_n_left2));
                 }
                 else if (u*u + v*v < 0) {
-                    C_n_1[i][j] = C_n[i][j] - (dt/(2*dx))*(u*(4*C_n_up - C_n_up2 - 3*C_n[i][j]) + v*(4*C_n_right - 3*C_n[i][j] - C_n_right2));
+                    C_n_1[i][j] = C_n[i][j] - (dt/(2*dx))*(u*(4*C_n_down - C_n_down2 - 3*C_n[i][j]) + v*(4*C_n_right - 3*C_n[i][j] - C_n_right2));
                 }
             }
         }
