@@ -16,9 +16,6 @@ using namespace std;
 // We have a 2D grid of processors
 #define DIMENSION 2
 
-// // Number of threads in each dimension
-// #define N_THREADS 2
-
 void write_to_file(double** C_n, string const& filename, int const& NT, int const& N) { 
     // Allocate memory for the file
     ofstream file;
@@ -67,11 +64,12 @@ double** create_matrix(int const& N){
 }
 
 int contiguous_memory_index(int const& i, int const& j, int const& N) {
+    // Calculate the index of the contiguous memory matrix
     return j + (N * i);
 }
 
 double* contiguous_memory_alloc(int const& N) {
-    // Allocate memory for the matrix
+    // Allocate contiguous memory for the matrix
     double* mat = new double[N * N];
     // Initialize the matrix
     for (int i = 0; i < N; i++) {
@@ -83,33 +81,40 @@ double* contiguous_memory_alloc(int const& N) {
 }
 
 void initial_gaussian(double** C_n, int const& N, double const& L, int const& N_glob, int const& mype, int const& nprocs_per_dim) {
+
+    // Initialize variables
     int i;
     int j;
     int glob_i;
     int glob_j; 
+
+    // Calculate the global start (i,j) with respect to the current processor
     int glob_i_start = (nprocs_per_dim - 1 - floor(mype / nprocs_per_dim)) * N;
     int glob_j_start = (mype % nprocs_per_dim) * N;
 
     // Using multiple threads, initialize the gaussian matrix
     #pragma omp parallel for default(none) private(i, j, glob_i, glob_j) shared(C_n, N, L, mype, nprocs_per_dim, N_glob, glob_i_start, glob_j_start) schedule(guided) 
     for (i = 0; i < N; i++) {
+        // Calculate the global i
         glob_i =  glob_i_start + i;
         for (j = 0; j < N; j++) {
+            // Calculate the global j
             glob_j =  glob_j_start + j;
+            // Calculate the gaussian value with respect to the global coordinates
             C_n[i][j] = exp(-(pow((glob_j-(N_glob/2))*L/N_glob, 2) + pow((glob_i-(N_glob/2))*L/N_glob, 2))/(L*L/8));
         }
     }
 
+    // Helpful for debugging
+    // Save each processor's data to a file
     // char filename[100];
     // cout << "Writing output to file..." << endl;
     // int dummy_var = sprintf(filename, "./final-version/mype_%d.txt", mype);
     // write_to_file(C_n, filename, 0, N);
-
-    // write_to_file(global_output, "./final-version/global_output.txt", 0, N_glob);
 }
 
 void apply_boundary_conditions(int const& N, double const& dt, double const& dx, double const& u, double const& v, double** C_n, double** C_n_1, double* const& left_ghost_cells, double* const& right_ghost_cells, double* const& up_ghost_cells, double* const& down_ghost_cells, string const& scheme) {
-    // Initialize the variables
+    // Initialize the variables accounting for 1D and 2D ghost cells
     double C_n_up;
     double C_n_up2;
     double C_n_down;
@@ -127,37 +132,42 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
     for (i = 0; i < N; i ++) {
         for (j = 0; j < N; j ++) {
             // Apply periodic boundary conditions
-            // Middle rows
             if (scheme == "Second-Order-Upwind") {
+                // Top row
                 if (i == 0) {
                     C_n_up = up_ghost_cells[j];
                     C_n_up2 = up_ghost_cells[j + N];
                     C_n_down = C_n[i+1][j];
                     C_n_down2 = C_n[i+2][j];
+                    // Left column
                     if (j == 0) {
                         C_n_left = left_ghost_cells[i];
                         C_n_left2 = left_ghost_cells[i + N];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right column
                     else if (j == N - 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = right_ghost_cells[i];
                         C_n_right2 = right_ghost_cells[i + N];
                     }
+                    // Left + 1 column
                     else if (j == 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = left_ghost_cells[i];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right - 1 column
                     else if (j == N - 2) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = right_ghost_cells[i];
                     }
+                    // Middle columns
                     else {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
@@ -165,35 +175,41 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
                         C_n_right2 = C_n[i][j+2];
                     }
                 }
+                // Bottom row
                 else if (i == N - 1) {
                     C_n_up = C_n[i-1][j];
                     C_n_up2 = C_n[i-2][j];
                     C_n_down = down_ghost_cells[j];
                     C_n_down2 = down_ghost_cells[j + N];
+                    // Left column
                     if (j == 0) {
                         C_n_left = left_ghost_cells[i];
                         C_n_left2 = left_ghost_cells[i + N];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right column
                     else if (j == N - 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = right_ghost_cells[i];
                         C_n_right2 = right_ghost_cells[i + N];
                     }
+                    // Left + 1 column
                     else if (j == 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = left_ghost_cells[i];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right - 1 column
                     else if (j == N - 2) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = right_ghost_cells[i];
                     }
+                    // Middle columns
                     else {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
@@ -202,35 +218,41 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
                     }
 
                 }
+                // Top - 1 row
                 else if (i == 1) {
                     C_n_up = C_n[i-1][j];
                     C_n_up2 = up_ghost_cells[j];
                     C_n_down = C_n[i+1][j];
                     C_n_down2 = C_n[i+2][j];
+                    // Left column
                     if (j == 0) {
                         C_n_left = left_ghost_cells[i];
                         C_n_left2 = left_ghost_cells[i + N];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right column
                     else if (j == N - 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = right_ghost_cells[i];
                         C_n_right2 = right_ghost_cells[i + N];
                     }
+                    // Left + 1 column
                     else if (j == 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = left_ghost_cells[i];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right - 1 column
                     else if (j == N - 2) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = right_ghost_cells[i];
                     }
+                    // Middle columns
                     else {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
@@ -238,35 +260,41 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
                         C_n_right2 = C_n[i][j+2];
                     }
                 }
+                // Bottom + 1 row
                 else if (i == N - 2) {
                     C_n_up = C_n[i-1][j];
                     C_n_up2 = C_n[i-2][j];
                     C_n_down = C_n[i+1][j];
                     C_n_down2 = down_ghost_cells[j];
+                    // Left column
                     if (j == 0) {
                         C_n_left = left_ghost_cells[i];
                         C_n_left2 = left_ghost_cells[i + N];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right column
                     else if (j == N - 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = right_ghost_cells[i];
                         C_n_right2 = right_ghost_cells[i + N];
                     }
+                    // Left + 1 column
                     else if (j == 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = left_ghost_cells[i];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right - 1 column
                     else if (j == N - 2) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = right_ghost_cells[i];
                     }
+                    // Middle columns
                     else {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
@@ -274,35 +302,41 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
                         C_n_right2 = C_n[i][j+2];
                     }
                 }
+                // Middle rows
                 else {
                     C_n_up = C_n[i-1][j];
                     C_n_up2 = C_n[i-2][j];
                     C_n_down = C_n[i+1][j];
                     C_n_down2 = C_n[i+2][j];
+                    // Left column
                     if (j == 0) {
                         C_n_left = left_ghost_cells[i];
                         C_n_left2 = left_ghost_cells[i + N];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right column
                     else if (j == N - 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = right_ghost_cells[i];
                         C_n_right2 = right_ghost_cells[i + N];
                     }
+                    // Left + 1 column
                     else if (j == 1) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = left_ghost_cells[i];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = C_n[i][j+2];
                     }
+                    // Right - 1 column
                     else if (j == N - 2) {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
                         C_n_right = C_n[i][j+1];
                         C_n_right2 = right_ghost_cells[i];
                     }
+                    // Middle columns
                     else {
                         C_n_left = C_n[i][j-1];
                         C_n_left2 = C_n[i][j-2];
@@ -312,6 +346,7 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
                 }
             }
             else {
+                // Middle rows
                 if (i != 0 && i != N-1) {
                     C_n_up = C_n[i-1][j];
                     C_n_down = C_n[i+1][j];
@@ -380,16 +415,16 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
                     }
                 }
             }
-            // Compute next time step
+            
+            // Average (Smoothen) gaussian value
             C_n[i][j] = 0.25*(C_n_up + C_n_down + C_n_left + C_n_right);
 
             // Based on LAX formulation
             if (scheme == "LAX") {
                 C_n_1[i][j] = C_n[i][j] - (dt/(2*dx))*(u*(C_n_down - C_n_up) + v*(C_n_right - C_n_left));
             }
+            // Based on First Order Upwind Scheme
             else if (scheme == "First-Order-Upwind") {
-
-                // Based on First Order Upwind Scheme
                 if (u*u + v*v > 0) { 
                     C_n_1[i][j] = C_n[i][j] - (dt/dx)*(u*(C_n[i][j] - C_n_up) + v*(C_n[i][j] - C_n_left));
                 }
@@ -397,6 +432,7 @@ void apply_boundary_conditions(int const& N, double const& dt, double const& dx,
                     C_n_1[i][j] = C_n[i][j] - (dt/dx)*(u*(C_n_down - C_n[i][j]) + v*(C_n_right - C_n[i][j]));
                 }
             }
+            // Based on Second Order Upwind Scheme
             else if (scheme == "Second-Order-Upwind") {
                 if (u*u + v*v > 0) {
                     C_n_1[i][j] = C_n[i][j] - (dt/(2*dx))*(u*(3*C_n[i][j] - 4*C_n_up + C_n_up2) + v*(3*C_n[i][j] - 4*C_n_left + C_n_left2));
@@ -415,6 +451,8 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     double** C_n = create_matrix(N);
     double** C_n_1 = create_matrix(N);
     int N_glob = N*nprocs_per_dim;
+
+    // Only for processor 0 (master) to combine output from all processors
     double** global_output = create_matrix(N_glob);
 
     double dx = L/N_glob;
@@ -428,14 +466,17 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     // Initialize gaussian grid
     initial_gaussian(C_n, N, L, N_glob, mype, nprocs_per_dim);
 
-    // Initialize columns to send
+    // Initialize data to send
     if (scheme == "Second-Order-Upwind") {
         double col_1[2*N];
         double col_n[2*N];
         double row_1[2*N];
         double row_n[2*N];
+        int i;
 
-        for (int i = 0; i < N; i++) {
+        // Use multiple threads to compute data to send
+        #pragma omp parallel for default(none) private(i) shared(row_1, row_n, col_1, col_n, C_n, N) schedule(guided)  
+        for (i = 0; i < N; i++) {
             // left 2N columns
             col_1[i] = C_n[i][0];
             col_1[i+N] = C_n[i][1];
@@ -443,10 +484,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
             // right 2N columns
             col_n[i] = C_n[i][N-1];
             col_n[i+N] = C_n[i][N-2];
-        }
 
-
-        for (int i = 0; i < N; i++) {
             // top 2N rows
             row_1[i] = C_n[0][i];
             row_1[i+N] = C_n[1][i];
@@ -454,7 +492,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
             // bottom 2N rows
             row_n[i] = C_n[N-1][i];
             row_n[i+N] = C_n[N-2][i];
-        } 
+        }
 
         double up_ghost_cells[2*N];
         double down_ghost_cells[2*N];
@@ -476,8 +514,11 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     else {
         double col_1[N];
         double col_n[N];
+        int i;
 
-        for (int i = 0; i < N; i++) {
+        // Use multiple threads to compute data to send
+        #pragma omp parallel for default(none) private(i) shared(col_1, col_n, C_n, N) schedule(guided)  
+        for (i = 0; i < N; i++) {
             col_1[i] = C_n[i][0];
             col_n[i] = C_n[i][N-1];
         }
@@ -499,7 +540,6 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
         apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells, scheme);
 
     }
-    
     
     // Swap references
     swap(C_n, C_n_1);
@@ -537,6 +577,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
     }
     // For other processors
     else {
+        // Initialize local output as a contiguous array to send
         double* contiguous_C_n = contiguous_memory_alloc(N);
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
@@ -546,32 +587,26 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
         MPI_Send(contiguous_C_n, N*N, MPI_DOUBLE, 0, 0, comm2d);
     }
 
-    // char filename[100];
-    // cout << "Writing output to file..." << endl;
-    // int dummy_var = sprintf(filename, "./final-version/mype_%d.txt", mype);
-    // write_to_file(C_n, filename, 0, N);
-
-    // BREAKPOINT
+    // BREAKPOINT for debugging purposes
     // return ;    
 
+    // Run simulation for a certain number of timesteps
     for (int n = 0; n < NT; n++) {
 
         // Start timer
 	    double ts = MPI_Wtime();
         
-        // Initialize columns to send
+        // Initialize data to send
         if (scheme == "Second-Order-Upwind") {
             double col_1[2*N];
             double col_n[2*N];
             double row_1[2*N];
-            double row_n[2*N]; 
+            double row_n[2*N];
+            int i;
 
-            double up_ghost_cells[2*N];
-            double down_ghost_cells[2*N];
-            double left_ghost_cells[2*N];
-            double right_ghost_cells[2*N];
-
-            for (int i = 0; i < N; i++) {
+            // Use multiple threads to compute data to send
+            #pragma omp parallel for default(none) private(i) shared(row_1, row_n, col_1, col_n, C_n, N) schedule(guided)  
+            for (i = 0; i < N; i++) {
                 // left 2N columns
                 col_1[i] = C_n[i][0];
                 col_1[i+N] = C_n[i][1];
@@ -579,9 +614,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
                 // right 2N columns
                 col_n[i] = C_n[i][N-1];
                 col_n[i+N] = C_n[i][N-2];
-            }
 
-            for (int i = 0; i < N; i++) {
                 // top 2N rows
                 row_1[i] = C_n[0][i];
                 row_1[i+N] = C_n[1][i];
@@ -590,6 +623,11 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
                 row_n[i] = C_n[N-1][i];
                 row_n[i+N] = C_n[N-2][i];
             }
+
+            double up_ghost_cells[2*N];
+            double down_ghost_cells[2*N];
+            double left_ghost_cells[2*N];
+            double right_ghost_cells[2*N];
 
             MPI_Status status;
 
@@ -602,21 +640,23 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
             // Apply BCs
             apply_boundary_conditions(N, dt, dx, u, v, C_n, C_n_1, left_ghost_cells, right_ghost_cells, up_ghost_cells, down_ghost_cells, scheme);
 
-            
         }
         else {
             double col_1[N];
             double col_n[N];
+            int i;
+
+            // Use multiple threads to compute data to send
+            #pragma omp parallel for default(none) private(i) shared(col_1, col_n, C_n, N) schedule(guided)  
+            for (i = 0; i < N; i++) {
+                col_1[i] = C_n[i][0];
+                col_n[i] = C_n[i][N-1];
+            }
             
             double up_ghost_cells[N];
             double down_ghost_cells[N];
             double left_ghost_cells[N];
             double right_ghost_cells[N];
-
-            for (int i = 0; i < N; i++) {
-                col_1[i] = C_n[i][0];
-                col_n[i] = C_n[i][N-1];
-            }
 
             MPI_Status status;
 
@@ -679,6 +719,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
             }
             // For other processors
             else {
+                // Initialize contiguous local buffer for each processor's local output to send
                 double* contiguous_C_n = contiguous_memory_alloc(N);
                 for (int i = 0; i < N; i++) {
                     for (int j = 0; j < N; j++) {
@@ -725,6 +766,7 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
             }
             // For other processors 
             else {
+                // Initialize contiguous local buffer for each processor's local output to send
                 double* contiguous_C_n = contiguous_memory_alloc(N);
                 for (int i = 0; i < N; i++) {
                     for (int j = 0; j < N; j++) {
@@ -735,14 +777,6 @@ void advection_simulation(int const& N, int const& NT, double const& L, double c
             }
         }
     }
-
-    // Save all procsor's data to file
-    // char filename[100];
-    // cout << "Writing output to file..." << endl;
-    // int dummy_var = sprintf(filename, "./final-version/mype_%d.txt", mype);
-    // write_to_file(C_n, filename, 0, N);
-
-    // write_to_file(global_output, "./final-version/global_output.txt", 0, N_glob);
 
     // Best grind rate
     cout << "Best grind rate: " << best_grind_rate << " iter/sec" << endl;
@@ -790,8 +824,6 @@ int main(int argc, char** argv) {
     double v = stod(argv[6]);
     int num_threads = stoi(argv[7]);
     string scheme = argv[8];
-
-    // int num_threads;
 
     cout << "Simulation Parameters:" << endl;
     cout << "N = " << N_glb << endl;
