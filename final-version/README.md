@@ -573,3 +573,6 @@ Threads per processor: 2
 1. I would like to learn make - For this simulation, I have been compiling and running scipts by creating a shell script (run_sim.sh). Since I did not know make and did not have time to learn it by the deadline, I am submitting the run_sim.sh script in place of the make file as Professor Siegel suggested.
 
 2. I was not able to figure how to implement support for non-uniform u and v - If I had finishing debugging my MPI code a little sooner, I think I would have been able to add support for non-uniform u and v however, I ran out of time.
+
+# Note:
+If you'd like to see a fun little animation I made with this code, run the animate_simulation.sh script in the visualizing directory.
