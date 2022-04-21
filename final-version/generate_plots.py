@@ -30,20 +30,14 @@ def generate_plots(filename):
     
     plt.close()
 
-    
+generate_plots("./final-version/initial_gaussian.txt")
+# generate_plots("./final-version/mype_0.txt")
+# generate_plots("./final-version/mype_1.txt")
+# generate_plots("./final-version/mype_2.txt")
+# generate_plots("./final-version/mype_3.txt")
+# generate_plots("./final-version/global_output.txt")
 
 
-if __name__ == "__main__":
-    generate_plots("./final-version/initial_gaussian.txt")
-    # generate_plots("./final-version/mype_0.txt")
-    # generate_plots("./final-version/mype_1.txt")
-    # generate_plots("./final-version/mype_2.txt")
-    # generate_plots("./final-version/mype_3.txt")
-    # generate_plots("./final-version/global_output.txt")
-    
+generate_plots("./final-version/simulation_NTby2_timesteps.txt")
 
-    generate_plots("./final-version/simulation_NTby2_timesteps.txt")
-
-    generate_plots("./final-version/simulation_NT_timesteps.txt")
-    
-    pass
+generate_plots("./final-version/simulation_NT_timesteps.txt")
