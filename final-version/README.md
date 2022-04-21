@@ -400,7 +400,7 @@ Threads per processor: 2
 
 ![simulation_20000_f](../final-version/graphs/simulation_NT_timesteps_LAX.png)
 
-We can perform a **diff** check between these output files and the corresponding output files in mileston-1 to check for bitwise reproducability. This will show us there there is **not** bitwise reproducability in the output between the serial (or parallelized) and the hybird versions of the simulation. The outputs between serial and parallelized versions of the simulation are bitwise reproducable. This is because of minor changes caused in the hybrid version due to floating point associativity but does not change the accuracy of the simulation. This is indicated by the images shown above.
+We can perform a **diff** check between these output files and the corresponding output files in mileston-1 to check for bitwise reproducability. This will show us that there is **not** bitwise reproducability in the output between the serial (or parallelized) and the hybird versions of the simulation. The outputs between serial and parallelized versions of the simulation are bitwise reproducable. This is because of minor changes caused in the hybrid version due to floating point associativity but does not change the accuracy of the simulation. This is indicated by the images shown above.
 
 
 
