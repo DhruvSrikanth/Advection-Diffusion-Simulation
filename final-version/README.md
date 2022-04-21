@@ -414,8 +414,8 @@ L = 1.0 (Physical Cartesian Domain Length)
 T = 1.0e6 (Total Physical Timespan)
 u = 5.0e-7 (X velocity Scalar)
 v = 2.85e-7 (Y velocity Scalar)
-n = 48 (number of threads) (Only passed when we are testing with OpenMP turned on)
-scheme = "LAX"
+n = 48 (Number of threads) (Only passed when we are testing with OpenMP turned on)
+scheme = "LAX" (Computation scheme)
 ```
 
 ```
