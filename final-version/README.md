@@ -390,22 +390,109 @@ Threads per processor: 2
 
 1. Initial Gaussian:
 
-![initial_gaussian_f](../final-version/initial_gaussian_LAX.png)
+![initial_gaussian_f](../final-version/graphs/initial_gaussian_LAX.png)
 
 2. Simulation for 10000 timesteps:
 
-![simulation_10000_f](../final-version/simulation_NTby2_timesteps_LAX.png)
+![simulation_10000_f](../final-version/graphs/simulation_NTby2_timesteps_LAX.png)
 
 3. Simulation for 20000 timesteps:
 
-![simulation_20000_f](../final-version/simulation_NT_timesteps_LAX.png)
+![simulation_20000_f](../final-version/graphs/simulation_NT_timesteps_LAX.png)
 
 We can perform a **diff** check between these output files and the corresponding output files in mileston-1 to check for bitwise reproducability. This will show us there there is **not** bitwise reproducability in the output between the serial (or parallelized) and the hybird versions of the simulation. The outputs between serial and parallelized versions of the simulation are bitwise reproducable. This is because of minor changes caused in the hybrid version due to floating point associativity but does not change the accuracy of the simulation. This is indicated by the images shown above.
 
 
 
 ### Performance Analysis:
-TODO
+
+Input used throughout performance analysis - 
+```
+N = 10000 (Matrix Dimension)
+NT = 20000 (Number of timesteps)
+L = 1.0 (Physical Cartesian Domain Length) 
+T = 1.0e6 (Total Physical Timespan)
+u = 5.0e-7 (X velocity Scalar)
+v = 2.85e-7 (Y velocity Scalar)
+scheme = "LAX"
+```
+
+```
+Optimal number of OpenMP threads per rank: 48
+```
+
+#### Strong Scaling (1 MPI rank per node) - 
+
+```
+--cpus-per-task = 48
+```
+
+Data - 
+
+| Nodes       | Grind Rate (iter/s)      | time (s)    |
+| ----------- | -----------             |----------- |
+| 1           | 48                   | 416.7  |
+| 4           | 257                   | 77.8     |
+| 16           | 1716                  | 11.6     |
+
+
+Graph - 
+
+![strong_scaling_f_1](../final-version/graphs/strong_scaling_1.png)
+
+#### Strong Scaling (1 MPI rank per core) - 
+
+```
+--ntasks-per-node = 36
+```
+
+Data - 
+
+| Nodes       | Grind Rate (iter/s)      | time (s)    |
+| ----------- | -----------             |----------- |
+| 1           | 86                   | 232.6  |
+| 4           | 421                   | 47.5     |
+| 16           | 1712                  | 11.7     |
+
+Graph - 
+
+![strong_scaling_f_1](../final-version/graphs/strong_scaling_2.png)
+
+#### Weak Scaling (1 MPI rank per node) - 
+
+```
+--cpus-per-task = 48
+```
+
+Data - 
+
+| Nodes       | N      | Grind Rate (iter/s)    | time (s)    |
+| ----------- | -----------             |----------- | ----------- |
+| 1           | 10000                   | 52  | 384.6   |
+| 4           | 20000                   | 50     | 400.0    |
+| 16           | 40000                  | 47     | 425.5    |
+
+Graph - 
+
+![weak_scaling_f_1](../final-version/graphs/weak_scaling_1.png)
+
+#### Weak Scaling (1 MPI rank per core) - 
+
+```
+--ntasks-per-node = 16
+```
+
+Data - 
+
+| Nodes       | N      | Grind Rate (iter/s)    | time (s)    |
+| ----------- | -----------             |----------- | ----------- |
+| 1           | 10000                   | 46  | 434.8   |
+| 4           | 20000                   | 46     | 434.8    |
+| 16           | 40000                  | 44     | 454.5    |
+
+Graph - 
+
+![weak_scaling_f_2](../final-version/graphs/weak_scaling_2.png)
 
 # Final Version - First-Order Upwind Scheme
 The change from the previously used LAX scheme is minor. Most portions of the algorithm remain the same, however, the only parts I needed to modify in the code are was the final computation for C_n[i][j] at time step n=n+1. Using the equations provided in the project rubric, I got an equation for C_n+1 in terms of C_n and added this with simple logical checks for |(u,v)| > 0 and |(u,v)| < 0.
@@ -431,15 +518,15 @@ Threads per processor: 2
 
 1. Initial Gaussian:
 
-![initial_gaussian_f_1](../final-version/initial_gaussian_FOU.png)
+![initial_gaussian_f_1](../final-version/graphs/initial_gaussian_FOU.png)
 
 2. Simulation for 10000 timesteps:
 
-![simulation_10000_f_1](../final-version/simulation_NTby2_timesteps_FOU.png)
+![simulation_10000_f_1](../final-version/graphs/simulation_NTby2_timesteps_FOU.png)
 
 3. Simulation for 20000 timesteps:
 
-![simulation_20000_f_1](../final-version/simulation_NT_timesteps_FOU.png)
+![simulation_20000_f_1](../final-version/graphs/simulation_NT_timesteps_FOU.png)
 
 # Final Version - Non-Uniform (u,v) Support
 Although I wanted to complete the entire assignment, due to most of my time being spent on debugging my MPI program, I was not able to complete this in time. More on this in the shortcomings sections.
@@ -468,15 +555,15 @@ Threads per processor: 2
 
 1. Initial Gaussian:
 
-![initial_gaussian_f_2](../final-version/initial_gaussian_SOU.png)
+![initial_gaussian_f_2](../final-version/graphs/initial_gaussian_SOU.png)
 
 2. Simulation for 10000 timesteps:
 
-![simulation_10000_f_2](../final-version/simulation_NTby2_timesteps_SOU.png)
+![simulation_10000_f_2](../final-version/graphs/simulation_NTby2_timesteps_SOU.png)
 
 3. Simulation for 20000 timesteps:
 
-![simulation_20000_f_2](../final-version/simulation_NT_timesteps_SOU.png)
+![simulation_20000_f_2](../final-version/graphs/simulation_NT_timesteps_SOU.png)
 
 
 
