@@ -365,7 +365,7 @@ scheme - Computation scheme (options - "LAX", "First-Order-Upwind", "Second-Orde
 ```
 
 3. Running without a run script - 
-Copy uncommented line from the run scripts and execute them one after the other.
+Copy uncommented lines from the run scripts and execute them one after the other.
 
 
 

@@ -9,25 +9,18 @@ def read_file(filename):
     with open(filename, "r") as f:
         file_str = f.read()
         data = ast.literal_eval(file_str)
-        n_procs_per_dim = data[0][0]
+        NT = data[0][0]
         grid = data[1]
         grid = np.array(grid)
-    return (n_procs_per_dim, grid)
+    return (NT, grid)
 
 
 def generate_plots(filename):
     '''
     Plot and save the data.
     '''
-    n_procs_per_dim, data = read_file(filename)
+    NT, data = read_file(filename)
     plt.imshow(data)
-
-    # plt.xticks([])
-    # plt.yticks([])
-
-    # plt.xlim(1, data.shape[0]*n_procs_per_dim)
-    # plt.ylim(1, data.shape[0]*n_procs_per_dim)
-
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.colorbar(orientation='vertical')
